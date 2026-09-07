@@ -1,0 +1,11 @@
+{
+  "extraPaths": ["src"],
+  "venvPath": ".",
+  "venv": ".venv",
+  "exclude": [
+    "**/__pycache__",
+    "**/migrations",
+    ".venv",
+    "staticfiles"
+  ]
+}

@@ -1,29 +1,22 @@
 from django.contrib import messages
-from django.core.cache import cache
-from django.http import JsonResponse
+from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from .cache import get_cached_task_list, invalidate_task_list_cache
 from .forms import TaskForm
 from .models import Task
 
-CACHE_KEY = "todos:list"
-CACHE_TTL_SECONDS = 60
 
-
-def _invalidate_list_cache():
-    cache.delete(CACHE_KEY)
+def _flash_form_errors(request: HttpRequest, form: TaskForm) -> None:
+    # Flattens form validation errors into the messages framework.
+    for field, errors in (form.errors or {}).items():
+        for error in errors:
+            messages.error(request, f"{field}: {error}")
 
 
 def task_list(request):
-    """Reads go through Redis first (write-through invalidated on every
-    create/edit/toggle/delete below, plus a short TTL as a safety net) so
-    the list page is demonstrably cache-accelerated, not just DB-backed."""
-    tasks = cache.get(CACHE_KEY)
-    from_cache = tasks is not None
-    if tasks is None:
-        tasks = list(Task.objects.all())
-        cache.set(CACHE_KEY, tasks, CACHE_TTL_SECONDS)
+    tasks, from_cache = get_cached_task_list()
     return render(
         request,
         "todos/index.html",
@@ -38,12 +31,10 @@ def create_task(request):
     form = TaskForm(request.POST)
     if form.is_valid():
         form.save()
-        _invalidate_list_cache()
+        invalidate_task_list_cache()
         messages.success(request, "Task created.")
     else:
-        for field, errors in form.errors.items():
-            for error in errors:
-                messages.error(request, f"{field}: {error}")
+        _flash_form_errors(request, form)
 
     return redirect("task-list")
 
@@ -55,12 +46,10 @@ def edit_task(request, pk):
         form = TaskForm(request.POST, instance=task)
         if form.is_valid():
             form.save()
-            _invalidate_list_cache()
+            invalidate_task_list_cache()
             messages.success(request, "Task updated.")
             return redirect("task-list")
-        for field, errors in form.errors.items():
-            for error in errors:
-                messages.error(request, f"{field}: {error}")
+        _flash_form_errors(request, form)
     else:
         form = TaskForm(instance=task)
 
@@ -70,9 +59,8 @@ def edit_task(request, pk):
 @require_POST
 def toggle_task(request, pk):
     task = get_object_or_404(Task, pk=pk)
-    task.is_done = not task.is_done
-    task.save(update_fields=["is_done", "updated_at"])
-    _invalidate_list_cache()
+    task.toggle_done()
+    invalidate_task_list_cache()
     return redirect("task-list")
 
 
@@ -80,13 +68,11 @@ def toggle_task(request, pk):
 def delete_task(request, pk):
     task = get_object_or_404(Task, pk=pk)
     task.delete()
-    _invalidate_list_cache()
+    invalidate_task_list_cache()
     messages.success(request, "Task deleted.")
     return redirect("task-list")
 
 
 def health_check(request):
-    """Liveness check for the ALB target groups. Deliberately does not touch
-    the database or cache so a slow/unavailable dependency never flaps ECS
-    task health."""
+    # ALB health check: no DB/cache dependency.
     return JsonResponse({"status": "ok"})

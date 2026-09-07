@@ -8,8 +8,7 @@ from pathlib import Path
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-    # Application code lives under src/ (config/ itself stays at repo root as
-    # the outer management layer) - put it on sys.path so `todos` imports.
+    # App code lives under src/.
     sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
     try:
         from django.core.management import execute_from_command_line

@@ -5,9 +5,7 @@ on:
     branches: [main]
     paths-ignore:
       - "README.md"
-      # Only the generated file, not the whole ecs/ dir - editing
-      # taskdef.template.json or appspec.yaml must still trigger a build.
-      - "ecs/taskdef.json"
+      - "ecs/taskdef.json"  # CI-generated file only
   workflow_dispatch: {}
 
 permissions:
@@ -16,10 +14,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  # Set as a repo secret once Md6-infra-repo's bootstrap+root stacks are
-  # deployed (value = the root stack's GitHubActionsRoleArn output). Unlike
-  # the sibling photo-uploader-app project, this can't be hardcoded yet -
-  # this repo's infra hasn't been deployed, so there's no real account ID.
+  # Set once Md6-infra-repo's stacks are deployed (root stack's GitHubActionsRoleArn output).
   AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
   ECR_REPOSITORY: md6-todo-dev-app
   ROOT_STACK_NAME: md6-todo-dev-root
@@ -59,11 +54,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Look up live infra values
-        # No GitHub Secrets for these - most carry an AWS-generated random
-        # suffix or simply change if the stack is ever torn down/rebuilt, so
-        # a copied value goes stale silently. Querying the root stack's own
-        # outputs here, every run, means there's nothing to ever go stale or
-        # re-copy by hand (see Md6-infra-repo's root.yaml Outputs).
         run: |
           set -euo pipefail
 
@@ -114,9 +104,6 @@ jobs:
           git add ecs/taskdef.json
           git commit -m "chore: render ecs/taskdef.json [skip ci]"
           git push
-        # Committed and pushed *before* the ECR push below, so CodePipeline's
-        # git-sourced AppSource action never reads a taskdef.json older than
-        # the image it's about to deploy.
 
       - name: Build and push image (one unique immutable tag - no "latest")
         env:

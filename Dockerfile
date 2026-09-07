@@ -32,7 +32,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app/src" \
     PYTHONUNBUFFERED=1
 
-# collectstatic needs no live DB/AWS credentials, just settings that import cleanly.
+# Build-time only secret key, just to satisfy settings import.
 RUN DJANGO_SECRET_KEY=build-time-only python manage.py collectstatic --noinput
 
 RUN chown -R app:app /app

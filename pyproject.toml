@@ -23,7 +23,12 @@ dev = [
 ]
 
 [tool.uv]
-# This is a Django application, not an installable library - no src/ package
-# layout, no [build-system]/[project.scripts] needed. `uv sync` just
-# resolves dependencies into .venv.
+# Application, not a library - no src package build.
 package = false
+
+[tool.ruff]
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+# RUF012: false positive on Django's declarative class attributes.
+ignore = ["RUF012"]

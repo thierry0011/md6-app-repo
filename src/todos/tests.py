@@ -56,8 +56,6 @@ def test_edit_task(client):
 
 @pytest.mark.django_db
 def test_list_is_cached_after_first_read(client):
-    """The second read of the list page should come from cache, not the DB -
-    the view's `from_cache` flag is the observable signal for that."""
     cache.clear()
     Task.objects.create(title="Cache me")
 

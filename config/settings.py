@@ -1,14 +1,3 @@
-"""
-Django settings for the To-Do app.
-
-Every environment-specific value is read from an environment variable so the
-same image runs unmodified in ECS. In the ECS task definition, POSTGRES_USER,
-POSTGRES_PASSWORD and DJANGO_SECRET_KEY are injected from Secrets Manager via
-the task definition's `secrets` block; everything else (including
-POSTGRES_HOST, which is the RDS Proxy endpoint, never the raw RDS instance)
-is a plain `environment` entry.
-"""
-
 import os
 from pathlib import Path
 
@@ -82,7 +71,7 @@ DATABASES = {
 
 TESTING = env_bool("DJANGO_TESTING")
 
-# Unit tests run against sqlite in-memory so CI doesn't need a live Postgres.
+# Tests use sqlite in-memory instead of Postgres.
 if TESTING:
     DATABASES["default"] = {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
 
@@ -111,12 +100,7 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ---------------------------------------------------------------------------
-# Cache: ElastiCache Redis accelerates task-list reads (see todos/views.py).
-# Falls back to Django's in-process LocMemCache when REDIS_HOST isn't set
-# (plain `manage.py runserver` without Redis) or during tests, so nothing
-# about local development or CI ever requires a live Redis.
-# ---------------------------------------------------------------------------
+# Redis cache; falls back to LocMemCache when REDIS_HOST is unset or testing.
 REDIS_HOST = os.environ.get("REDIS_HOST", "")
 REDIS_PORT = os.environ.get("REDIS_PORT", "6379")
 

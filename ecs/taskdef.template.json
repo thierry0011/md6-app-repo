@@ -1,0 +1,48 @@
+{
+  "family": "md6-todo-dev-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "${TASK_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${TASK_ROLE_ARN}",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "<IMAGE1_NAME>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DJANGO_ALLOWED_HOSTS", "value": "*" },
+        { "name": "AWS_REGION", "value": "${AWS_REGION}" },
+        { "name": "POSTGRES_HOST", "value": "${DB_PROXY_ENDPOINT}" },
+        { "name": "POSTGRES_PORT", "value": "5432" },
+        { "name": "POSTGRES_DB", "value": "${DB_NAME}" },
+        { "name": "REDIS_HOST", "value": "${REDIS_HOST}" },
+        { "name": "REDIS_PORT", "value": "${REDIS_PORT}" }
+      ],
+      "secrets": [
+        { "name": "POSTGRES_USER", "valueFrom": "${DB_CREDENTIALS_SECRET_ARN}:username::" },
+        { "name": "POSTGRES_PASSWORD", "valueFrom": "${DB_CREDENTIALS_SECRET_ARN}:password::" },
+        { "name": "DJANGO_SECRET_KEY", "valueFrom": "${DJANGO_SECRET_KEY_SECRET_ARN}:SECRET_KEY::" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/md6-todo-dev",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "app"
+        }
+      }
+    }
+  ]
+}

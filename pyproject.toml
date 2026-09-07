@@ -1,21 +1,29 @@
 [project]
-name = "practical-interview-prep"
+name = "md6-todo-app"
 version = "0.1.0"
-description = "Add your description here"
+description = "To-Do list app (Django) for ECS Fargate + RDS Proxy + ElastiCache Redis"
 readme = "README.md"
 authors = [
     { name = "kwizera thierry", email = "thkwzr@gmail.com" }
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "django>=6.1.1",
-    "django-rest-framework>=0.1.0",
-    "djangorestframework>=3.18.0",
+    "django>=6.1.1,<7.0",
+    "gunicorn>=23.0.0",
+    "psycopg[binary]>=3.2.0",
+    "whitenoise>=6.8.0",
+    "django-redis>=5.4.0",
 ]
 
-[project.scripts]
-practical-interview-prep = "practical_interview_prep:main"
+[dependency-groups]
+dev = [
+    "flake8>=7.1.0",
+    "pytest>=8.3.0",
+    "pytest-django>=4.9.0",
+]
 
-[build-system]
-requires = ["uv_build>=0.12.9,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+# This is a Django application, not an installable library - no src/ package
+# layout, no [build-system]/[project.scripts] needed. `uv sync` just
+# resolves dependencies into .venv.
+package = false

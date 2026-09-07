@@ -1,10 +1,9 @@
 """
-WSGI config for config project.
+WSGI config for the To-Do app.
 
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.1/howto/deployment/wsgi/
+Application code (the `todos` package) lives under src/, not next to this
+file - PYTHONPATH must include src/ when this module is loaded directly by
+gunicorn (the Dockerfile sets this; manage.py does it itself for local runs).
 """
 
 import os

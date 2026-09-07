@@ -1,0 +1,127 @@
+name: Build and push app image
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "README.md"
+      # Only the generated file, not the whole ecs/ dir - editing
+      # taskdef.template.json or appspec.yaml must still trigger a build.
+      - "ecs/taskdef.json"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write   # required for OIDC federation to AWS
+  contents: write   # required to commit the rendered ecs/taskdef.json back
+
+env:
+  AWS_REGION: us-east-1
+  # Set as a repo secret once Md6-infra-repo's bootstrap+root stacks are
+  # deployed (value = the root stack's GitHubActionsRoleArn output). Unlike
+  # the sibling photo-uploader-app project, this can't be hardcoded yet -
+  # this repo's infra hasn't been deployed, so there's no real account ID.
+  AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+  ECR_REPOSITORY: md6-todo-dev-app
+  ROOT_STACK_NAME: md6-todo-dev-root
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --locked --group dev
+
+      - run: uv run flake8 .
+
+      - run: DJANGO_TESTING=true DJANGO_SECRET_KEY=ci uv run manage.py collectstatic --noinput
+
+      - run: DJANGO_TESTING=true DJANGO_SECRET_KEY=ci uv run pytest -v
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Look up live infra values
+        # No GitHub Secrets for these - most carry an AWS-generated random
+        # suffix or simply change if the stack is ever torn down/rebuilt, so
+        # a copied value goes stale silently. Querying the root stack's own
+        # outputs here, every run, means there's nothing to ever go stale or
+        # re-copy by hand (see Md6-infra-repo's root.yaml Outputs).
+        run: |
+          set -euo pipefail
+
+          OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name "$ROOT_STACK_NAME" --query "Stacks[0].Outputs" --output json)
+
+          get_output() {
+            echo "$OUTPUTS" | jq -r --arg key "$1" '.[] | select(.OutputKey==$key) | .OutputValue'
+          }
+
+          DB_PROXY_ENDPOINT=$(get_output DBProxyEndpoint)
+          DB_NAME=$(get_output DBName)
+          DB_CREDENTIALS_SECRET_ARN=$(get_output DBCredentialsSecretArn)
+          DJANGO_SECRET_KEY_SECRET_ARN=$(get_output DjangoSecretKeySecretArn)
+          REDIS_HOST=$(get_output CacheEndpointAddress)
+          REDIS_PORT=$(get_output CacheEndpointPort)
+          TASK_EXECUTION_ROLE_ARN=$(get_output TaskExecutionRoleArn)
+          TASK_ROLE_ARN=$(get_output TaskRoleArn)
+
+          for name_value in "DB_PROXY_ENDPOINT=$DB_PROXY_ENDPOINT" "DB_NAME=$DB_NAME" \
+                             "DB_CREDENTIALS_SECRET_ARN=$DB_CREDENTIALS_SECRET_ARN" \
+                             "DJANGO_SECRET_KEY_SECRET_ARN=$DJANGO_SECRET_KEY_SECRET_ARN" \
+                             "REDIS_HOST=$REDIS_HOST" "REDIS_PORT=$REDIS_PORT" \
+                             "TASK_EXECUTION_ROLE_ARN=$TASK_EXECUTION_ROLE_ARN" \
+                             "TASK_ROLE_ARN=$TASK_ROLE_ARN"; do
+            name="${name_value%%=*}"
+            value="${name_value#*=}"
+            if [ -z "$value" ] || [ "$value" = "None" ]; then
+              echo "::error::Looked-up value for $name came back empty - refusing to render a broken taskdef.json."
+              exit 1
+            fi
+            echo "${name}=${value}" >> "$GITHUB_ENV"
+          done
+
+      - name: Render ecs/taskdef.json from the template
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq gettext-base
+          envsubst < ecs/taskdef.template.json > ecs/taskdef.json
+
+      - name: Commit rendered taskdef.json if it changed
+        run: |
+          if git diff --quiet --exit-code -- ecs/taskdef.json; then
+            echo "No changes to ecs/taskdef.json - nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ecs/taskdef.json
+          git commit -m "chore: render ecs/taskdef.json [skip ci]"
+          git push
+        # Committed and pushed *before* the ECR push below, so CodePipeline's
+        # git-sourced AppSource action never reads a taskdef.json older than
+        # the image it's about to deploy.
+
+      - name: Build and push image (one unique immutable tag - no "latest")
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
+          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"

@@ -1,10 +1,8 @@
 """
-ASGI config for config project.
+ASGI config for the To-Do app.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.1/howto/deployment/asgi/
+Application code (the `todos` package) lives under src/, not next to this
+file - PYTHONPATH must include src/ when this module is loaded directly.
 """
 
 import os

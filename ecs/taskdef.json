@@ -1,0 +1,48 @@
+{
+  "family": "md6-todo-dev-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "PENDING_FIRST_CI_RENDER",
+  "taskRoleArn": "PENDING_FIRST_CI_RENDER",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "<IMAGE1_NAME>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DJANGO_ALLOWED_HOSTS", "value": "*" },
+        { "name": "AWS_REGION", "value": "us-east-1" },
+        { "name": "POSTGRES_HOST", "value": "PENDING_FIRST_CI_RENDER" },
+        { "name": "POSTGRES_PORT", "value": "5432" },
+        { "name": "POSTGRES_DB", "value": "todoapp" },
+        { "name": "REDIS_HOST", "value": "PENDING_FIRST_CI_RENDER" },
+        { "name": "REDIS_PORT", "value": "6379" }
+      ],
+      "secrets": [
+        { "name": "POSTGRES_USER", "valueFrom": "PENDING_FIRST_CI_RENDER:username::" },
+        { "name": "POSTGRES_PASSWORD", "valueFrom": "PENDING_FIRST_CI_RENDER:password::" },
+        { "name": "DJANGO_SECRET_KEY", "valueFrom": "PENDING_FIRST_CI_RENDER:SECRET_KEY::" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/md6-todo-dev",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "app"
+        }
+      }
+    }
+  ]
+}

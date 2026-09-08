@@ -4,8 +4,8 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "PENDING_FIRST_CI_RENDER",
-  "taskRoleArn": "PENDING_FIRST_CI_RENDER",
+  "executionRoleArn": "arn:aws:iam::711387109786:role/md6-todo-dev-ecs-task-execution",
+  "taskRoleArn": "arn:aws:iam::711387109786:role/md6-todo-dev-ecs-task-role",
   "runtimePlatform": {
     "cpuArchitecture": "X86_64",
     "operatingSystemFamily": "LINUX"
@@ -24,16 +24,16 @@
       "environment": [
         { "name": "DJANGO_ALLOWED_HOSTS", "value": "*" },
         { "name": "AWS_REGION", "value": "us-east-1" },
-        { "name": "POSTGRES_HOST", "value": "PENDING_FIRST_CI_RENDER" },
+        { "name": "POSTGRES_HOST", "value": "md6-todo-dev-db-proxy.proxy-cwdsq2qouvd7.us-east-1.rds.amazonaws.com" },
         { "name": "POSTGRES_PORT", "value": "5432" },
         { "name": "POSTGRES_DB", "value": "todoapp" },
-        { "name": "REDIS_HOST", "value": "PENDING_FIRST_CI_RENDER" },
+        { "name": "REDIS_HOST", "value": "md6-todo-dev-redis.otzsqj.ng.0001.use1.cache.amazonaws.com" },
         { "name": "REDIS_PORT", "value": "6379" }
       ],
       "secrets": [
-        { "name": "POSTGRES_USER", "valueFrom": "PENDING_FIRST_CI_RENDER:username::" },
-        { "name": "POSTGRES_PASSWORD", "valueFrom": "PENDING_FIRST_CI_RENDER:password::" },
-        { "name": "DJANGO_SECRET_KEY", "valueFrom": "PENDING_FIRST_CI_RENDER:SECRET_KEY::" }
+        { "name": "POSTGRES_USER", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-db-credentials-ub2jOF:username::" },
+        { "name": "POSTGRES_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-db-credentials-ub2jOF:password::" },
+        { "name": "DJANGO_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-django-secret-key-tm75mu:SECRET_KEY::" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",

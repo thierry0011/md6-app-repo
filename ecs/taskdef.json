@@ -24,17 +24,24 @@
       "environment": [
         { "name": "DJANGO_ALLOWED_HOSTS", "value": "*" },
         { "name": "AWS_REGION", "value": "us-east-1" },
-        { "name": "POSTGRES_HOST", "value": "md6-todo-dev-db-proxy.proxy-cwdsq2qouvd7.us-east-1.rds.amazonaws.com" },
         { "name": "POSTGRES_PORT", "value": "5432" },
         { "name": "POSTGRES_DB", "value": "todoapp" },
-        { "name": "REDIS_HOST", "value": "md6-todo-dev-redis.otzsqj.ng.0001.use1.cache.amazonaws.com" },
         { "name": "REDIS_PORT", "value": "6379" }
       ],
       "secrets": [
-        { "name": "POSTGRES_USER", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-db-credentials-ub2jOF:username::" },
-        { "name": "POSTGRES_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-db-credentials-ub2jOF:password::" },
-        { "name": "DJANGO_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-django-secret-key-tm75mu:SECRET_KEY::" }
+        { "name": "POSTGRES_HOST", "valueFrom": "arn:aws:ssm:us-east-1:711387109786:parameter/md6-todo-dev-db-proxy-endpoint" },
+        { "name": "REDIS_HOST", "valueFrom": "arn:aws:ssm:us-east-1:711387109786:parameter/md6-todo-dev-redis-endpoint" },
+        { "name": "POSTGRES_USER", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-db-credentials:username::" },
+        { "name": "POSTGRES_PASSWORD", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-db-credentials:password::" },
+        { "name": "DJANGO_SECRET_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:711387109786:secret:md6-todo-dev-django-secret-key:SECRET_KEY::" }
       ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 20
+      },
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {

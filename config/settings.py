@@ -109,9 +109,17 @@ if REDIS_HOST and not TESTING:
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
-            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                # Redis outage degrades to cache misses (reads hit the DB) instead of 500s.
+                "IGNORE_EXCEPTIONS": True,
+                "SOCKET_CONNECT_TIMEOUT": 2,
+                "SOCKET_TIMEOUT": 2,
+            },
         }
     }
+    # Log swallowed Redis errors so outages are visible in CloudWatch.
+    DJANGO_REDIS_LOG_IGNORED_EXCEPTIONS = True
 else:
     CACHES = {
         "default": {
